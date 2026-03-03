@@ -8,3 +8,4 @@ pypdf
 faiss-cpu
 pydantic
 python-dotenv
+langchain-community
