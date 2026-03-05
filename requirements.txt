@@ -1,6 +1,6 @@
-fastapi
-uvicorn
-langchain
+fastapi==0.109.0
+uvicorn==0.27.0
+langchain>=0.1.0
 langchain-community
 langchain-core
 langchain-google-genai
