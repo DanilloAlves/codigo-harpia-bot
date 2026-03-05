@@ -126,5 +126,8 @@ async def chat(query: UserQuery):
 if __name__ == "__main__":
     import uvicorn
     import os
-    port = int(os.environ.get("PORT", 8000))
+    # O Render define a porta automaticamente na variável de ambiente PORT
+    port = int(os.environ.get("PORT", 8000)) 
+    # Log para confirmar no console do Render
+    print(f"Iniciando o servidor na porta: {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
