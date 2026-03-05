@@ -118,13 +118,9 @@ async def chat(query: UserQuery):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# --- INICIALIZAÇÃO DO SERVIDOR ---
 if __name__ == "__main__":
     import uvicorn
-    import os
-    # O Render define a porta automaticamente na variável de ambiente PORT
-    port = int(os.environ.get("PORT", 8000)) 
-    # Log para confirmar no console do Render
-    print(f"Iniciando o servidor na porta: {port}")
+    # Porta dinâmica para o Render
+    port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
-
-
