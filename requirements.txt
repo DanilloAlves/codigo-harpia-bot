@@ -10,3 +10,4 @@ langgraph
 pypdf
 faiss-cpu
 python-dotenv
+
