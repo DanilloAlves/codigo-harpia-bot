@@ -70,7 +70,8 @@ def inicializar_vectorstore():
     print(f"TOTAL: {len(docs)} páginas carregadas com sucesso.")
     splitter = RecursiveCharacterTextSplitter(chunk_size=700, chunk_overlap=100)
     chunks = splitter.split_documents(docs)
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    # Use o modelo mais recente e estável para evitar o erro 404
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-04")
     return FAISS.from_documents(chunks, embeddings)
 
 vectorstore = inicializar_vectorstore()
@@ -125,6 +126,7 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
 
 
 
