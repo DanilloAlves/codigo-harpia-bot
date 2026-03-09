@@ -1,0 +1,56 @@
+<div id="harpia-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 999999;">
+    <div id="harpia-window" style="display: none; width: 320px; height: 450px; background: #fff; border: 1px solid #ccc; border-radius: 15px; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.2); overflow: hidden; margin-bottom: 10px; font-family: sans-serif;">
+        <div style="background: #000; color: #fff; padding: 15px; font-weight: bold; text-align: center;">🦅 CÓDIGO HARPIA AI</div>
+        <div id="harpia-msgs" style="flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; gap: 10px; color: #333;">
+            <div style="background: #eee; padding: 10px; border-radius: 10px; align-self: flex-start; font-size: 14px;">Olá! Como posso ajudar sua empresa hoje?</div>
+        </div>
+        <div style="display: flex; padding: 10px; border-top: 1px solid #eee;">
+            <input type="text" id="harpia-input" placeholder="Digite sua dúvida..." style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 5px; outline: none;">
+            <button id="harpia-send" style="background: #000; color: #fff; border: none; margin-left: 5px; padding: 0 15px; border-radius: 5px; cursor: pointer;">➤</button>
+        </div>
+    </div>
+    <button id="harpia-btn" style="background: #000; color: #fff; border: none; border-radius: 50%; width: 60px; height: 60px; font-size: 30px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">💬</button>
+</div>
+
+<script>
+(function() {
+    const btn = document.getElementById('harpia-btn');
+    const win = document.getElementById('harpia-window');
+    const input = document.getElementById('harpia-input');
+    const send = document.getElementById('harpia-send');
+    const msgs = document.getElementById('harpia-msgs');
+
+    // URL do seu Render (Certifique-se de que é esta mesma)
+    const API_URL = "https://porjetoharpia.onrender.com/chat";
+
+    btn.onclick = () => {
+        win.style.display = win.style.display === 'none' ? 'flex' : 'none';
+    };
+
+    async function enviarMsg() {
+        const text = input.value.trim();
+        if (!text) return;
+
+        // Adiciona mensagem do usuário
+        msgs.innerHTML += `<div style="background: #007bff; color: #fff; padding: 10px; border-radius: 10px; align-self: flex-end; font-size: 14px; max-width: 80%;">${text}</div>`;
+        input.value = '';
+        msgs.scrollTop = msgs.scrollHeight;
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            });
+            const data = await response.json();
+            msgs.innerHTML += `<div style="background: #eee; padding: 10px; border-radius: 10px; align-self: flex-start; font-size: 14px; max-width: 80%;">${data.resposta}</div>`;
+        } catch (e) {
+            msgs.innerHTML += `<div style="background: #ffcccc; padding: 10px; border-radius: 10px; align-self: flex-start; font-size: 14px;">Erro ao conectar. Verifique se a IA está online.</div>`;
+        }
+        msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    send.onclick = enviarMsg;
+    input.onkeydown = (e) => { if(e.key === 'Enter') enviarMsg(); };
+})();
+</script>
