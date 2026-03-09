@@ -1,153 +1,78 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        /* Resolve o problema do título cortado removendo margens do navegador */
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
-            overflow: hidden;
-            background: transparent;
-            font-family: sans-serif;
+        * { box-sizing: border-box; }
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            overflow: hidden; background: transparent; font-family: sans-serif; 
         }
-
         #harpia-window {
-            display: none; /* Inicia fechado */
-            width: calc(100% - 20px);
-            height: calc(100% - 80px);
-            max-width: 330px;
-            background: #fff;
-            border: 1px solid #ccc;
-            border-radius: 15px;
-            flex-direction: column;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            overflow: hidden;
-            position: absolute;
-            bottom: 80px;
-            right: 10px;
+            display: none; flex-direction: column;
+            width: 320px; height: 450px; 
+            background: #fff; border: 1px solid #000; border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            position: absolute; bottom: 85px; right: 10px;
         }
-
         #harpia-header {
-            background: #000;
-            color: #fff;
-            padding: 15px;
-            font-weight: bold;
-            text-align: center;
-            flex-shrink: 0; /* Impede o título de ser esmagado */
+            background: #000; color: #fff; padding: 12px;
+            font-weight: bold; text-align: center; border-radius: 14px 14px 0 0;
         }
-
         #harpia-msgs {
-            flex: 1;
-            padding: 15px;
-            overflow-y: auto;
-            background: #f9f9f9;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            color: #333;
+            flex: 1; padding: 15px; overflow-y: auto; background: #fdfdfd;
+            display: flex; flex-direction: column; gap: 8px;
         }
-
-        #harpia-input-area {
-            display: flex;
-            padding: 10px;
-            border-top: 1px solid #eee;
-            background: #fff;
-        }
-
-        #harpia-input {
-            flex: 1;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            outline: none;
-        }
-
-        #harpia-send {
-            background: #000;
-            color: #fff;
-            border: none;
-            margin-left: 5px;
-            padding: 0 15px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
+        #input-area { display: flex; padding: 10px; border-top: 1px solid #eee; }
+        #harpia-input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 5px; outline: none; }
         #harpia-btn {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            background: #000;
-            color: #fff;
-            border: none;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            font-size: 30px;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            z-index: 100;
+            position: absolute; bottom: 15px; right: 15px;
+            background: #000; color: #fff; border: none; border-radius: 50%;
+            width: 60px; height: 60px; font-size: 30px; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
         }
-
-        .msg-user { background: #007bff; color: #fff; padding: 10px; border-radius: 10px; align-self: flex-end; font-size: 14px; max-width: 80%; }
-        .msg-bot { background: #eee; padding: 10px; border-radius: 10px; align-self: flex-start; font-size: 14px; max-width: 80%; }
+        .msg-user { background: #007bff; color: #fff; padding: 8px 12px; border-radius: 10px; align-self: flex-end; max-width: 85%; font-size: 14px; }
+        .msg-bot { background: #f0f0f0; color: #000; padding: 8px 12px; border-radius: 10px; align-self: flex-start; max-width: 85%; font-size: 14px; }
     </style>
 </head>
 <body>
-
     <div id="harpia-window">
         <div id="harpia-header">🦅 CÓDIGO HARPIA AI</div>
-        <div id="harpia-msgs">
-            <div class="msg-bot">Olá! Como posso ajudar sua empresa hoje?</div>
-        </div>
-        <div id="harpia-input-area">
+        <div id="harpia-msgs"><div class="msg-bot">Olá! Como posso ajudar sua empresa hoje?</div></div>
+        <div id="input-area">
             <input type="text" id="harpia-input" placeholder="Digite sua dúvida...">
-            <button id="harpia-send">➤</button>
         </div>
     </div>
-    
     <button id="harpia-btn">💬</button>
-
     <script>
         const btn = document.getElementById('harpia-btn');
         const win = document.getElementById('harpia-window');
-        const input = document.getElementById('harpia-input');
-        const send = document.getElementById('harpia-send');
-        const msgs = document.getElementById('harpia-msgs');
+        const inp = document.getElementById('harpia-input');
+        const box = document.getElementById('harpia-msgs');
+        const API = "https://porjetoharpia.onrender.com/chat";
 
-        const API_URL = "https://porjetoharpia.onrender.com/chat";
+        btn.onclick = () => win.style.display = win.style.display === 'none' ? 'flex' : 'none';
 
-        btn.onclick = () => {
-            win.style.display = win.style.display === 'none' ? 'flex' : 'none';
-        };
-
-        async function enviarMsg() {
-            const text = input.value.trim();
-            if (!text) return;
-
-            msgs.innerHTML += `<div class="msg-user">${text}</div>`;
-            input.value = '';
-            msgs.scrollTop = msgs.scrollHeight;
-
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text })
-                });
-                const data = await response.json();
-                msgs.innerHTML += `<div class="msg-bot">${data.resposta}</div>`;
-            } catch (e) {
-                msgs.innerHTML += `<div class="msg-bot" style="background:#ffcccc">Erro ao conectar com a IA.</div>`;
+        inp.onkeydown = async (e) => {
+            if (e.key === 'Enter' && inp.value.trim()) {
+                const text = inp.value;
+                box.innerHTML += `<div class="msg-user">${text}</div>`;
+                inp.value = '';
+                box.scrollTop = box.scrollHeight;
+                try {
+                    const r = await fetch(API, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({message: text})
+                    });
+                    const d = await r.json();
+                    box.innerHTML += `<div class="msg-bot">${d.resposta}</div>`;
+                } catch(err) {
+                    box.innerHTML += `<div class="msg-bot" style="color:red">Erro de conexão.</div>`;
+                }
+                box.scrollTop = box.scrollHeight;
             }
-            msgs.scrollTop = msgs.scrollHeight;
-        }
-
-        send.onclick = enviarMsg;
-        input.onkeydown = (e) => { if(e.key === 'Enter') enviarMsg(); };
+        };
     </script>
 </body>
 </html>
