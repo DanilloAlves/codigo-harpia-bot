@@ -20,8 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 2. Importações de IA (Ajustadas para evitar o ModuleNotFoundError)
-# Importamos das bibliotecas específicas em vez da biblioteca "mãe"
+# 2. Importações de IA (Removido o que causava erro)
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -29,10 +28,6 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.graph import StateGraph, START, END
-
-# Importação direta do submódulo de chains para forçar o reconhecimento pelo Render
-import langchain.chains.combine_documents as combine_docs
-create_stuff_documents_chain = combine_docs.create_stuff_documents_chain
 
 # --- MODELO E BASE DE CONHECIMENTO ---
 llm = ChatGoogleGenerativeAI(
@@ -62,25 +57,32 @@ def inicializar_vectorstore():
 vectorstore = inicializar_vectorstore()
 retriever = vectorstore.as_retriever(search_kwargs={"k": 3}) if vectorstore else None
 
-# --- LÓGICA DO AGENTE ---
+# --- LÓGICA DO AGENTE (FORMA DIRETA) ---
 class AgentState(TypedDict):
     pergunta: str
     resposta: Optional[str]
-
-prompt_rag = ChatPromptTemplate.from_messages([
-    ("system", "Você é o consultor da Código Harpia. Use o contexto para responder. Contexto: {context}"),
-    ("human", "{input}")
-])
 
 def node_responder(state: AgentState):
     if not retriever:
         return {"resposta": "Conhecimento não carregado."}
     
+    # Busca os documentos
     docs_rel = retriever.invoke(state["pergunta"])
-    # Chamada da chain usando a função importada de forma segura
-    chain = create_stuff_documents_chain(llm, prompt_rag)
-    resposta = chain.invoke({"input": state["pergunta"], "context": docs_rel})
-    return {"resposta": resposta}
+    contexto = "\n\n".join([doc.page_content for doc in docs_rel])
+    
+    # Monta o prompt manualmente (Evita o erro de importar chains)
+    prompt = f"""Você é o consultor oficial da Código Harpia. 
+    Use o contexto abaixo para responder à pergunta do empresário. 
+    Se não souber, diga que não encontrou essa informação e peça para entrar em contato.
+
+    Contexto:
+    {contexto}
+
+    Pergunta: {state['pergunta']}"""
+
+    # Chama o Gemini diretamente
+    resposta = llm.invoke(prompt)
+    return {"resposta": resposta.content}
 
 workflow = StateGraph(AgentState)
 workflow.add_node("responder", node_responder)
@@ -103,6 +105,5 @@ async def chat(query: UserQuery):
 # --- INICIALIZAÇÃO ---
 if __name__ == "__main__":
     import uvicorn
-    # Importante: O Render exige que usemos a porta da variável de ambiente
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
