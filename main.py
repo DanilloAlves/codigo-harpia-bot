@@ -37,32 +37,38 @@ llm = ChatGoogleGenerativeAI(
 )
 
 def inicializar_vectorstore():
+    import os
     docs = []
-    # Usamos o caminho absoluto para o diretório atual do projeto no Render
-    caminho_base = pathlib.Path(__file__).parent.resolve()
-    caminho_pdfs = caminho_base / "documentos"
     
-    print(f"Buscando PDFs em: {caminho_pdfs}") # Isso aparecerá nos Logs do Render
-
+    # Pega o caminho onde o main.py está rodando
+    diretorio_atual = os.getcwd()
+    print(f"--- DIAGNÓSTICO DE PASTA ---")
+    print(f"Diretório atual de execução: {diretorio_atual}")
+    print(f"Conteúdo do diretório atual: {os.listdir(diretorio_atual)}")
+    
+    # Tenta localizar a pasta documentos de forma flexível
+    caminho_pdfs = pathlib.Path(diretorio_atual) / "documentos"
+    
     if not caminho_pdfs.exists():
-        print("Pasta 'documentos' não encontrada. Criando pasta vazia...")
-        caminho_pdfs.mkdir(parents=True, exist_ok=True)
+        print(f"ERRO CRÍTICO: A pasta {caminho_pdfs} NÃO EXISTE no Render.")
         return None
-        
+
+    print(f"Arquivos na pasta documentos: {os.listdir(str(caminho_pdfs))}")
+
     for n in caminho_pdfs.glob("*.pdf"):
         try:
-            print(f"Carregando: {n.name}")
+            print(f"Tentando carregar: {n.name}")
             loader = PyMuPDFLoader(str(n))
             docs.extend(loader.load())
         except Exception as e:
-            print(f"Erro ao carregar {n.name}: {e}")
-            continue
+            print(f"Falha no arquivo {n.name}: {e}")
             
     if not docs:
-        print("Nenhum documento PDF foi carregado.")
+        print("RESULTADO: Nenhum documento válido foi processado.")
         return None
         
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    print(f"TOTAL: {len(docs)} páginas carregadas com sucesso.")
+    splitter = RecursiveCharacterTextSplitter(chunk_size=700, chunk_overlap=100)
     chunks = splitter.split_documents(docs)
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     return FAISS.from_documents(chunks, embeddings)
@@ -119,6 +125,7 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
 
 
 
