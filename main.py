@@ -31,7 +31,7 @@ from langgraph.graph import StateGraph, START, END
 
 # --- MODELO E BASE DE CONHECIMENTO ---
 llm = ChatGoogleGenerativeAI(
-    model='gemini-2.0-flash', 
+    model='gemini-3-pro-preview', 
     temperature=0.0, 
     api_key=GOOGLE_API_KEY
 )
@@ -119,6 +119,7 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
 
 
 
