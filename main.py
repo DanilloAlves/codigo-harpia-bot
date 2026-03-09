@@ -30,24 +30,26 @@ app.add_middleware(
 # Configuração do SDK Oficial da Google
 genai.configure(api_key=GOOGLE_API_KEY)
 
-# --- CLASSE DE EMBEDDING CUSTOMIZADA (Para evitar o Erro 404) ---
+# --- CLASSE DE EMBEDDING REVISADA (Versão Estável v1) ---
 class GoogleCustomEmbeddings(Embeddings):
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        # Usa o SDK oficial diretamente, que é imune ao erro de rota do LangChain
-        result = genai.embed_content(
+        # Forçamos a versão da API para 'v1' para evitar o erro 404
+        client = genai.Client(api_key=GOOGLE_API_KEY, http_options={'api_version': 'v1'})
+        result = client.models.embed_content(
             model="models/text-embedding-004",
-            content=texts,
-            task_type="retrieval_document"
+            contents=texts,
+            config=genai.types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT")
         )
-        return result['embedding']
+        return result.embeddings
 
     def embed_query(self, text: str) -> list[float]:
-        result = genai.embed_content(
+        client = genai.Client(api_key=GOOGLE_API_KEY, http_options={'api_version': 'v1'})
+        result = client.models.embed_content(
             model="models/text-embedding-004",
-            content=text,
-            task_type="retrieval_query"
+            contents=text,
+            config=genai.types.EmbedContentConfig(task_type="RETRIEVAL_QUERY")
         )
-        return result['embedding'][0] if isinstance(result['embedding'][0], list) else result['embedding']
+        return result.embeddings
 
 # MODELO DE CHAT (gemini-3-pro-preview)
 llm = ChatGoogleGenerativeAI(
@@ -125,5 +127,6 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
 
 
