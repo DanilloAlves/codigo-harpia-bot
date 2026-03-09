@@ -62,33 +62,36 @@ def inicializar_vectorstore():
     diretorio_atual = os.getcwd()
     caminho_pdfs = pathlib.Path(diretorio_atual) / "documentos"
     
-    print(f"--- DIAGNÓSTICO DE INICIALIZAÇÃO ---")
-    print(f"Onde estou rodando: {diretorio_atual}")
-    print(f"Conteúdo da pasta raiz: {os.listdir(diretorio_atual)}")
+    print(f"--- INICIANDO CARREGAMENTO SEGURO ---")
 
     if not caminho_pdfs.exists():
-        print(f"ERRO: A pasta {caminho_pdfs} NÃO EXISTE no servidor.")
+        print(f"ERRO: Pasta {caminho_pdfs} não encontrada.")
         return None
 
-    arquivos_na_pasta = os.listdir(str(caminho_pdfs))
-    print(f"Arquivos na pasta documentos: {arquivos_na_pasta}")
-
-    for n in caminho_pdfs.glob("*.pdf"):
-        try:
-            print(f"Tentando carregar: {n.name}")
-            loader = PyMuPDFLoader(str(n))
-            docs.extend(loader.load())
-        except Exception as e:
-            print(f"Falha ao ler {n.name}: {e}")
+    # Lista todos os arquivos para garantir que não perderemos nada
+    for arquivo in os.listdir(str(caminho_pdfs)):
+        # Verifica se o arquivo termina com .pdf (independente de ser maiúsculo ou minúsculo)
+        if arquivo.lower().endswith(".pdf"):
+            caminho_completo = caminho_pdfs / arquivo
+            try:
+                print(f"Lendo PDF: {arquivo}")
+                loader = PyMuPDFLoader(str(caminho_completo))
+                docs.extend(loader.load())
+                print(f"Sucesso: {len(docs)} páginas carregadas até agora.")
+            except Exception as e:
+                print(f"Erro ao ler o arquivo {arquivo}: {e}")
             
     if not docs:
-        print("RESULTADO: Nenhum documento PDF foi processado.")
+        print("RESULTADO: Nenhum conteúdo extraído dos PDFs.")
         return None
         
     try:
-        embeddings = GoogleCustomEmbeddings()
-        print("Criando base de dados FAISS...")
-        return FAISS.from_documents(RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100).split_documents(docs), embeddings)
+        # Usando o SDK oficial da Google para evitar o erro 404
+        embeddings = GoogleCustomEmbeddings() 
+        splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+        chunks = splitter.split_documents(docs)
+        print(f"Criando Vectorstore com {len(chunks)} trechos de conhecimento...")
+        return FAISS.from_documents(chunks, embeddings)
     except Exception as e:
         print(f"ERRO NOS EMBEDDINGS: {e}")
         return None
@@ -122,4 +125,5 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
 
