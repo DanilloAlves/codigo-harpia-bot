@@ -38,17 +38,30 @@ llm = ChatGoogleGenerativeAI(
 
 def inicializar_vectorstore():
     docs = []
-    caminho_pdfs = pathlib.Path("./documentos")
+    # Usamos o caminho absoluto para o diretório atual do projeto no Render
+    caminho_base = pathlib.Path(__file__).parent.resolve()
+    caminho_pdfs = caminho_base / "documentos"
+    
+    print(f"Buscando PDFs em: {caminho_pdfs}") # Isso aparecerá nos Logs do Render
+
     if not caminho_pdfs.exists():
+        print("Pasta 'documentos' não encontrada. Criando pasta vazia...")
+        caminho_pdfs.mkdir(parents=True, exist_ok=True)
         return None
+        
     for n in caminho_pdfs.glob("*.pdf"):
         try:
+            print(f"Carregando: {n.name}")
             loader = PyMuPDFLoader(str(n))
             docs.extend(loader.load())
-        except Exception:
+        except Exception as e:
+            print(f"Erro ao carregar {n.name}: {e}")
             continue
+            
     if not docs:
+        print("Nenhum documento PDF foi carregado.")
         return None
+        
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     chunks = splitter.split_documents(docs)
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
@@ -106,5 +119,6 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
 
 
