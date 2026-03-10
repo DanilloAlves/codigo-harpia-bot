@@ -27,17 +27,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- CLASSE DE EMBEDDING BLINDADA ---
 class GoogleCustomEmbeddings(Embeddings):
     def __init__(self):
+        # Usamos a v1 fixa que já funcionou para as portas
         self.client = genai.Client(
             api_key=GOOGLE_API_KEY,
             http_options={'api_version': 'v1'}
         )
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        # O modelo 'text-embedding-004' deu 404, então usamos o 'embedding-001'
+        # que é o padrão universal e infalível
         response = self.client.models.embed_content(
-            model="text-embedding-004",
+            model="embedding-001", 
             contents=texts,
             config={'task_type': 'RETRIEVAL_DOCUMENT'}
         )
@@ -45,7 +47,7 @@ class GoogleCustomEmbeddings(Embeddings):
 
     def embed_query(self, text: str) -> list[float]:
         response = self.client.models.embed_content(
-            model="text-embedding-004",
+            model="embedding-001",
             contents=text,
             config={'task_type': 'RETRIEVAL_QUERY'}
         )
@@ -130,3 +132,4 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
