@@ -27,27 +27,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- CLASSE DE EMBEDDING ATUALIZADA (google-genai) ---
+# --- CLASSE DE EMBEDDING CORRIGIDA (Forçando v1 estável) ---
 class GoogleCustomEmbeddings(Embeddings):
     def __init__(self):
-        self.client = genai.Client(api_key=GOOGLE_API_KEY)
+        # AQUI ESTÁ O SEGREDO: Forçamos a versão da API para 'v1'
+        self.client = genai.Client(
+            api_key=GOOGLE_API_KEY,
+            http_options={'api_version': 'v1'} 
+        )
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        # Usando a nova estrutura da biblioteca google-genai
-        response = self.client.models.embed_content(
-            model="text-embedding-004",
-            contents=texts,
-            config={'task_type': 'RETRIEVAL_DOCUMENT'}
-        )
-        return [e.values for e in response.embeddings]
+        try:
+            response = self.client.models.embed_content(
+                model="text-embedding-004",
+                contents=texts,
+                config={'task_type': 'RETRIEVAL_DOCUMENT'}
+            )
+            # Extrai os valores numéricos dos embeddings
+            return [e.values for e in response.embeddings]
+        except Exception as e:
+            print(f"Erro ao gerar embedding de documentos: {e}")
+            raise e
 
     def embed_query(self, text: str) -> list[float]:
-        response = self.client.models.embed_content(
-            model="text-embedding-004",
-            contents=text,
-            config={'task_type': 'RETRIEVAL_QUERY'}
-        )
-        return response.embeddings[0].values
+        try:
+            response = self.client.models.embed_content(
+                model="text-embedding-004",
+                contents=text,
+                config={'task_type': 'RETRIEVAL_QUERY'}
+            )
+            return response.embeddings[0].values
+        except Exception as e:
+            print(f"Erro ao gerar embedding de query: {e}")
+            raise e
 
 llm = ChatGoogleGenerativeAI(
     model='gemini-3-pro-preview', 
@@ -113,3 +125,4 @@ if __name__ == "__main__":
     # Forçamos a leitura da porta do ambiente
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
