@@ -10,13 +10,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-# Bibliotecas de IA
-import google.generativeai as genai
+# IA e Documentos
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain_core.embeddings import Embeddings # Interface base
+from langchain_community.embeddings import HuggingFaceEmbeddings # MUDANÇA AQUI
 
 app = FastAPI(title="Projeto Harpia - IA")
 
@@ -27,29 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configuração do SDK Oficial da Google
-genai.configure(api_key=GOOGLE_API_KEY)
-
-# --- CLASSE DE EMBEDDING CUSTOMIZADA (Para evitar o Erro 404) ---
-class GoogleCustomEmbeddings(Embeddings):
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        # Usa o SDK oficial diretamente, que é imune ao erro de rota do LangChain
-        result = genai.embed_content(
-            model="models/text-embedding-004",
-            content=texts,
-            task_type="retrieval_document"
-        )
-        return result['embedding']
-
-    def embed_query(self, text: str) -> list[float]:
-        result = genai.embed_content(
-            model="models/text-embedding-004",
-            content=text,
-            task_type="retrieval_query"
-        )
-        return result['embedding'][0] if isinstance(result['embedding'][0], list) else result['embedding']
-
-# MODELO DE CHAT (gemini-3-pro-preview)
+# MODELO DE CHAT (Mantemos o seu Gemini 3 Pro Preview)
 llm = ChatGoogleGenerativeAI(
     model='gemini-3-pro-preview', 
     temperature=0.1, 
@@ -62,60 +39,61 @@ def inicializar_vectorstore():
     diretorio_atual = os.getcwd()
     caminho_pdfs = pathlib.Path(diretorio_atual) / "documentos"
     
-    print(f"--- INICIANDO CARREGAMENTO SEGURO ---")
+    print(f"--- INICIANDO CARREGAMENTO COM EMBEDDING LOCAL ---")
 
     if not caminho_pdfs.exists():
-        print(f"ERRO: Pasta {caminho_pdfs} não encontrada.")
         return None
 
-    # Lista todos os arquivos para garantir que não perderemos nada
     for arquivo in os.listdir(str(caminho_pdfs)):
-        # Verifica se o arquivo termina com .pdf (independente de ser maiúsculo ou minúsculo)
         if arquivo.lower().endswith(".pdf"):
-            caminho_completo = caminho_pdfs / arquivo
             try:
                 print(f"Lendo PDF: {arquivo}")
-                loader = PyMuPDFLoader(str(caminho_completo))
+                loader = PyMuPDFLoader(str(caminho_pdfs / arquivo))
                 docs.extend(loader.load())
-                print(f"Sucesso: {len(docs)} páginas carregadas até agora.")
             except Exception as e:
-                print(f"Erro ao ler o arquivo {arquivo}: {e}")
+                print(f"Erro ao ler {arquivo}: {e}")
             
     if not docs:
-        print("RESULTADO: Nenhum conteúdo extraído dos PDFs.")
         return None
         
     try:
-        # Usando o SDK oficial da Google para evitar o erro 404
-        embeddings = GoogleCustomEmbeddings() 
-        splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+        # --- A GRANDE MUDANÇA ---
+        # Esse modelo roda DENTRO do Render. Não usa API do Google. 
+        # É impossível dar Erro 404 aqui.
+        print("Carregando modelo de embedding local (HuggingFace)...")
+        embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=700, chunk_overlap=100)
         chunks = splitter.split_documents(docs)
-        print(f"Criando Vectorstore com {len(chunks)} trechos de conhecimento...")
+        
+        print(f"Criando Vectorstore com {len(chunks)} trechos...")
         return FAISS.from_documents(chunks, embeddings)
     except Exception as e:
-        print(f"ERRO NOS EMBEDDINGS: {e}")
+        print(f"ERRO NOS EMBEDDINGS LOCAIS: {e}")
         return None
 
 # Inicialização
 vectorstore = inicializar_vectorstore()
 retriever = vectorstore.as_retriever(search_kwargs={"k": 3}) if vectorstore else None
 
+class UserQuery(BaseModel):
+    message: str
+
 @app.post("/chat")
-async def chat(query: BaseModel): # Simplificado para teste
+async def chat(query: UserQuery):
     try:
-        msg = query.message if hasattr(query, 'message') else str(query)
+        msg = query.message
         if retriever:
             docs_rel = retriever.invoke(msg)
             contexto = "\n\n".join([d.page_content for d in docs_rel])
-            prompt = f"Consultor CÓDIGO HARPIA. Contexto:\n{contexto}\n\nPergunta: {msg}"
+            prompt = f"Consultor CÓDIGO HARPIA. Use o contexto:\n{contexto}\n\nPergunta: {msg}"
         else:
-            prompt = f"Consultor CÓDIGO HARPIA. Responda: {msg}"
+            prompt = f"Consultor CÓDIGO HARPIA (Base Offline). Responda: {msg}"
 
         resposta = llm.invoke(prompt)
         return {"resposta": resposta.content, "status": "success"}
     except Exception as e:
-        print(f"Erro: {e}")
-        return {"resposta": "Erro interno no servidor.", "erro": str(e)}
+        return {"resposta": "Erro no processamento.", "detalhe": str(e)}
 
 @app.get("/")
 async def root():
