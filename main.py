@@ -25,7 +25,7 @@ app.add_middleware(
 # 3. Inicialização do Cliente Gemini (v1 estável)
 client = genai.Client(api_key=GOOGLE_API_KEY)
 MODELO_ALVO = "gemini-3-pro-preview"
-TEMPERATURE = 0.3
+TEMPERATURE = 0.2
 
 # Variável global para o cérebro do consultor
 CONTEUDO_EBOOK = ""
@@ -123,4 +123,5 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     print(f"--- Servidor Harpia Live na Porta {port} ---")
     uvicorn.run(app, host="0.0.0.0", port=port)
+
 
