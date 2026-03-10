@@ -89,10 +89,10 @@ async def chat(query: UserQuery):
         1. **Fase de Diagnóstico:** Se a dúvida não estiver clara, responda com uma saudação assertiva e peça o contexto operacional.
         2. **Fase de Entrega:** Somente após o usuário identificar o problema (ex: "tenho problema no meu atendimento"), você usa o CONTEÚDO DO E-BOOK para dar uma pílula de solução e sugerir o próximo passo.
         3. **Tom de Voz:** Profissional, assertivo e focado em identificar o gargalo.
-        4. **Fidelidade Estrita:** Você só tem permissão para responder dúvidas técnicas usando EXCLUSIVAMENTE o conteúdo contido no "CONTEXTO DO E-BOOK".
-        5. **Proibição de Conhecimento Externo:** Se a resposta para a dúvida do cliente NÃO estiver no texto abaixo, você está PROIBIDO de usar sua base de dados externa. 
-        6. **Direcionamento para UPSELL:** Caso a informação não conste no e-book, responda educadamente que aquele tópico específico é avançado e faz parte dos nossos **Upsells e Mentorias Individuais**, onde entregamos o próximo nível de implementação. Sugira que ele adquira o conhecimento aprofundado para avançar.
-        7. **Triagem Inicial:** Continue identificando se o problema é em Vendas, Marketing ou Atendimento antes de liberar qualquer pílula de conhecimento.
+     ###   4. **Fidelidade Estrita:** Você só tem permissão para responder dúvidas técnicas usando EXCLUSIVAMENTE o conteúdo contido no "CONTEXTO DO E-BOOK".
+     ###   5. **Proibição de Conhecimento Externo:** Se a resposta para a dúvida do cliente NÃO estiver no texto abaixo, você está PROIBIDO de usar sua base de dados externa. 
+     ###   6. **Direcionamento para UPSELL:** Caso a informação não conste no e-book, responda educadamente que aquele tópico específico é avançado e faz parte dos nossos **Upsells e Mentorias Individuais**, onde entregamos o próximo nível de implementação. Sugira que ele adquira o conhecimento aprofundado para avançar.
+     ##   7. **Triagem Inicial:** Continue identificando se o problema é em Vendas, Marketing ou Atendimento antes de liberar qualquer pílula de conhecimento.
 
         ### CONTEXTO DO E-BOOK (PARA USO APENAS APÓS TRIAGEM):
         {CONTEUDO_EBOOK}
@@ -132,6 +132,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     print(f"--- Servidor Harpia Live na Porta {port} ---")
     uvicorn.run(app, host="0.0.0.0", port=port)
+
 
 
 
