@@ -28,11 +28,10 @@ app.add_middleware(
 
 genai.configure(api_key=GOOGLE_API_KEY)
 
-# --- CLASSE DE EMBEDDING COM SDK OFICIAL (Sem LangChain intermediário) ---
+# --- EMBEDDING SEM ERRO 404 ---
 class GoogleCustomEmbeddings(Embeddings):
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        # Chamada direta ao motor do Google
-        # Usamos o nome purista 'embedding-001' que é o mais aceito na v1beta
+        # Usamos o modelo purista para evitar o erro de rota do Render
         response = genai.embed_content(
             model="models/embedding-001",
             content=texts,
@@ -48,7 +47,6 @@ class GoogleCustomEmbeddings(Embeddings):
         )
         return response['embedding']
 
-# MODELO DE CHAT (gemini-3-pro-preview)
 llm = ChatGoogleGenerativeAI(
     model='gemini-3-pro-preview', 
     temperature=0.1, 
@@ -64,6 +62,7 @@ def inicializar_vectorstore():
     print(f"--- INICIANDO CARREGAMENTO CÓDIGO HARPIA ---")
 
     if not caminho_pdfs.exists():
+        print("ERRO: Pasta documentos não encontrada.")
         return None
 
     for arquivo in os.listdir(str(caminho_pdfs)):
@@ -79,21 +78,15 @@ def inicializar_vectorstore():
         return None
         
     try:
-        # AQUI É ONDE O "VAZIO" VIRA "PRONTO"
         embeddings = GoogleCustomEmbeddings() 
         splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=80)
         chunks = splitter.split_documents(docs)
-        
-        print(f"Gerando embeddings para {len(chunks)} trechos...")
-        # Criamos o FAISS usando nossa classe que fala direto com o Google
-        vector_db = FAISS.from_documents(chunks, embeddings)
-        print("BASE DE CONHECIMENTO CRIADA COM SUCESSO!")
-        return vector_db
+        print("Gerando embeddings e criando base de conhecimento...")
+        return FAISS.from_documents(chunks, embeddings)
     except Exception as e:
-        print(f"ERRO FINAL NOS EMBEDDINGS: {e}")
+        print(f"ERRO NOS EMBEDDINGS: {e}")
         return None
 
-# Inicialização
 vectorstore = inicializar_vectorstore()
 retriever = vectorstore.as_retriever(search_kwargs={"k": 3}) if vectorstore else None
 
@@ -114,13 +107,16 @@ async def chat(query: UserQuery):
         resposta = llm.invoke(prompt)
         return {"resposta": resposta.content, "status": "success"}
     except Exception as e:
-        return {"resposta": "Erro ao processar sua pergunta.", "detalhe": str(e)}
+        return {"resposta": "Erro ao processar.", "detalhe": str(e)}
 
 @app.get("/")
 async def root():
     return {"status": "Online", "conhecimento": "Pronto" if retriever else "Vazio"}
 
+# --- O SEGREDO DA PORTA NO RENDER ---
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 10000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    # O Render injeta a porta correta na variável PORT. Se não houver, usa 10000.
+    porta = int(os.environ.get("PORT", 10000))
+    print(f"Abrindo servidor na porta: {porta}")
+    uvicorn.run(app, host="0.0.0.0", port=porta)
