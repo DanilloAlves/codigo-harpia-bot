@@ -101,5 +101,7 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 10000))
+    # O Render usa a variável de ambiente PORT. Se não achar, usa 8000.
+    port = int(os.environ.get("PORT", 8000))
+    # Rodamos o app garantindo que o host seja 0.0.0.0
     uvicorn.run(app, host="0.0.0.0", port=port)
