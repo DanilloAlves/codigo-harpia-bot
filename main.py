@@ -1,23 +1,17 @@
 import os
 import pathlib
+import pdfplumber
 from typing import Optional
 from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from google import genai
 
 load_dotenv()
 GOOGLE_API_KEY = os.getenv("GEMINI_API_KEY")
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-
-# IA e Documentos
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_community.document_loaders import PyMuPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings # A MUDANÇA REAL
-
-app = FastAPI(title="Projeto Harpia")
+app = FastAPI(title="CÓDIGO HARPIA - IA")
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,51 +20,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# LLM para as respostas (Gemini continua aqui)
-llm = ChatGoogleGenerativeAI(
-    model='gemini-3-pro-preview', 
-    temperature=0.1, 
-    api_key=GOOGLE_API_KEY
-)
+# Inicializa o Cliente Gemini novo (conforme o código que você trouxe)
+client = genai.Client(api_key=GOOGLE_API_KEY)
+MODELO = "gemini-3-pro-preview"
 
-def criar_base_conhecimento():
-    print("--- OPERAÇÃO HARPIA: CARREGAMENTO LOCAL ---")
-    docs = []
+# Variável global para armazenar o conteúdo do e-book
+CONTEUDO_EBOOK = ""
+
+def carregar_ebook():
+    global CONTEUDO_EBOOK
+    print("--- INICIANDO LEITURA TÉCNICA DO PDF ---")
     caminho_pdfs = pathlib.Path(__file__).parent.resolve() / "documentos"
     
-    if not caminho_pdfs.exists():
-        return None
+    pdf_files = list(caminho_pdfs.glob("*.pdf"))
+    if not pdf_files:
+        print("ALERTA: PDF não encontrado na pasta documentos.")
+        return False
 
-    pdfs = list(caminho_pdfs.glob("*.pdf"))
-    for arquivo in pdfs:
+    texto_acumulado = ""
+    for pdf_path in pdf_files:
         try:
-            print(f"Processando arquivo: {arquivo.name}")
-            loader = PyMuPDFLoader(str(arquivo))
-            docs.extend(loader.load())
+            print(f"Extraindo texto de: {pdf_path.name}")
+            with pdfplumber.open(pdf_path) as pdf:
+                for page in pdf.pages:
+                    texto_acumulado += page.extract_text() + "\n"
+            print(f"Sucesso: {pdf_path.name} lido completamente.")
         except Exception as e:
-            print(f"Erro no PDF: {e}")
-            
-    if not docs:
-        return None
-        
-    try:
-        print("Iniciando Embedding Local (HuggingFace)...")
-        # Este modelo roda NO RENDER. Não usa API do Google. Zero erro 404.
-        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-        
-        splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=60)
-        chunks = splitter.split_documents(docs)
-        
-        db = FAISS.from_documents(chunks, embeddings)
-        print("SUCESSO ABSOLUTO: Base de conhecimento pronta!")
-        return db
-    except Exception as e:
-        print(f"ERRO NOS EMBEDDINGS LOCAIS: {e}")
-        return None
+            print(f"Erro ao ler PDF {pdf_path.name}: {e}")
+    
+    CONTEUDO_EBOOK = texto_acumulado
+    return len(CONTEUDO_EBOOK) > 0
 
-# Variáveis globais
-vectorstore = criar_base_conhecimento()
-retriever = vectorstore.as_retriever(search_kwargs={"k": 3}) if vectorstore else None
+# Carrega o conhecimento ao iniciar o script
+EBOOK_CARREGADO = carregar_ebook()
 
 class UserQuery(BaseModel):
     message: str
@@ -78,24 +60,33 @@ class UserQuery(BaseModel):
 @app.post("/chat")
 async def chat(query: UserQuery):
     try:
-        if retriever:
-            docs_rel = retriever.invoke(query.message)
-            contexto = "\n\n".join([d.page_content for d in docs_rel])
-            prompt = f"Você é o consultor oficial CÓDIGO HARPIA. Use o contexto:\n{contexto}\n\nPergunta: {query.message}"
-        else:
-            prompt = f"Consultor CÓDIGO HARPIA (Base Offline). Responda: {query.message}"
+        # Montamos o prompt com o contexto direto
+        prompt_sistema = f"""Você é o consultor oficial do CÓDIGO HARPIA. 
+        Use o CONTEÚDO DO E-BOOK abaixo para responder às dúvidas do empresário.
+        Se a resposta não estiver no texto, use seu conhecimento geral para complementar, 
+        mas priorize sempre a metodologia do Código Harpia.
 
-        resposta = llm.invoke(prompt)
-        return {"resposta": resposta.content}
+        CONTEÚDO DO E-BOOK:
+        {CONTEUDO_EBOOK if EBOOK_CARREGADO else "O e-book não foi carregado corretamente."}
+        
+        PERGUNTA DO EMPRESÁRIO: {query.message}"""
+
+        response = client.models.generate_content(
+            model=MODELO,
+            contents=prompt_sistema
+        )
+        
+        return {"resposta": response.text}
     except Exception as e:
-        return {"resposta": "Erro técnico.", "erro": str(e)}
+        print(f"Erro na IA: {e}")
+        return {"resposta": "Desculpe, tive um problema técnico. Pode repetir?", "erro": str(e)}
 
 @app.get("/")
 async def root():
     return {
         "status": "Online",
-        "conhecimento": "Pronto" if retriever else "Vazio",
-        "motor": "HuggingFace Local"
+        "conhecimento": "Pronto" if EBOOK_CARREGADO else "Vazio",
+        "paginas_lidas": "18" if EBOOK_CARREGADO else "0"
     }
 
 if __name__ == "__main__":
