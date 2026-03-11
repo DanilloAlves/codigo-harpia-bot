@@ -117,7 +117,7 @@ async def chat(query: UserQuery):
             contents=prompt_sistema,
             config=types.GenerateContentConfig(
                 temperature=TEMPERATURE,
-                max_output_tokens=1024
+                max_output_tokens=2048
             )
         )
         
@@ -135,3 +135,4 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
