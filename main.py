@@ -92,7 +92,7 @@ async def chat(query: UserQuery):
         - Se o usuário já identificou o gargalo (Vendas, Mkt ou Atendimento), você está PROIBIDO de perguntar novamente. Avance para a Consultoria.
 
         ### FASE 1: TRIAGEM (Início):
-        - Se o histórico for vazio ou apenas saudações, responda apenas: "Olá! Sou o Estrategista Harpia. Para eu te dar o caminho exato, qual o maior gargalo operacional da sua empresa hoje: Atendimento, Vendas ou Marketing?"
+        - Se o histórico for vazio ou apenas saudações, responda apenas: "Olá! Sou o Rodrigo Harpia. Para eu te dar o caminho exato, qual o maior gargalo operacional da sua empresa hoje: Atendimento, Vendas ou Marketing?"
         - Não cite módulos ou e-book nesta fase.
 
         ### FASE 2: CONSULTORIA (Após identificação):
@@ -136,3 +136,4 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
