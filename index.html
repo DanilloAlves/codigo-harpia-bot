@@ -53,7 +53,6 @@
         const box = document.getElementById('harpia-msgs');
         const API = "https://porjetoharpia.onrender.com/chat";
 
-        // MUDANÇA AQUI: Variável para armazenar o histórico da conversa
         let chatHistory = [];
 
         btn.onclick = () => win.style.display = win.style.display === 'none' ? 'flex' : 'none';
@@ -63,10 +62,16 @@
                 const text = inp.value;
                 box.innerHTML += `<div class="msg-user">${text}</div>`;
                 inp.value = '';
+                
+                // 1. ADICIONA INDICADOR DE CARREGAMENTO
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'msg-bot';
+                loadingDiv.id = 'loading-harpia';
+                loadingDiv.innerText = '🦅 Analisando seu cenário...';
+                box.appendChild(loadingDiv);
                 box.scrollTop = box.scrollHeight;
 
                 try {
-                    // MUDANÇA AQUI: Enviamos a mensagem atual + o histórico
                     const r = await fetch(API, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
@@ -77,17 +82,20 @@
                     });
 
                     const d = await r.json();
-                    const botReply = d.resposta;
+                    
+                    // 2. REMOVE O INDICADOR E EXIBE A RESPOSTA
+                    const loader = document.getElementById('loading-harpia');
+                    if (loader) loader.remove();
 
-                    // MUDANÇA AQUI: Adicionamos a interação ao histórico local
+                    const botReply = d.resposta;
                     chatHistory.push({ role: "user", content: text });
                     chatHistory.push({ role: "model", content: botReply });
 
-                    // Limita a memória para as últimas 10 interações (evita lentidão)
                     if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
-
                     box.innerHTML += `<div class="msg-bot">${botReply}</div>`;
                 } catch(err) {
+                    const loader = document.getElementById('loading-harpia');
+                    if (loader) loader.remove();
                     box.innerHTML += `<div class="msg-bot" style="color:red">Erro de conexão.</div>`;
                 }
                 box.scrollTop = box.scrollHeight;
