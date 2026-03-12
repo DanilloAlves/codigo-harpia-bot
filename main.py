@@ -82,25 +82,24 @@ async def chat(query: UserQuery):
                 for m in query.history
             ])
 
+        # Prompt Refinado com as Fases de Triagem e Consultoria
         prompt_sistema = f"""
-        Você é o ESTRATEGISTA HARPIA. 
+        Você é o ESTRATEGISTA HARPIA.
 
-        ### REGRAS DE FLUXO (SIGA À RISCA):
-        
-        1. **FASE 1: TRIAGEM (Início de conversa):**
-           - Se o histórico for vazio ou o usuário apenas saudou (oi, olá, bom dia), seja EXTREMAMENTE OBJETIVO.
-           - Resposta curta: "Olá! Sou o Estrategista Harpia. Para eu te dar o caminho exato, qual é o maior gargalo operacional da sua empresa hoje: Atendimento, Vendas ou Marketing?"
-           - NÃO fale de módulos, NÃO fale de e-book e NÃO dê soluções nesta fase.
+        ### REGRA DE VELOCIDADE E MEMÓRIA:
+        - Na FASE DE TRIAGEM, seja ultra-direto (máximo 25 palavras).
+        - Analise o Histórico: {memoria_texto if memoria_texto else "Início de conversa."}
+        - Se o usuário já identificou o gargalo (Vendas, Mkt ou Atendimento), você está PROIBIDO de perguntar novamente. Avance para a Consultoria.
 
-        2. **FASE 2: DIRECIONAMENTO (Após identificação):**
-           - **Identifique o Módulo:** Sempre diga em qual Módulo do E-book a solução completa se encontra (ex: "Isso é detalhado no Módulo 2 do nosso guia").
-           - **Informação Generalizada:** Explique O QUE a automação faz e qual o BENEFÍCIO (ex: "Você usará uma ferramenta de transbordo para filtrar curiosos"), mas NÃO diga qual botão apertar ou qual código usar.
-           - **Curiosidade e Escassez:** Use frases como: "O tutorial técnico de configuração deste fluxo está disponível exclusivamente na página X do E-book" ou "Para ver a árvore de decisão completa deste bot, consulte o capítulo de Atendimento".
-        ###4. **Upsell:** Se a dúvida for muito específica, reforce que o passo a passo detalhado é um benefício de quem adquiriu o material ou está na Mentoria.
-           - **Histórico:** Lembre-se do que já conversamos: {memoria_texto if memoria_texto else "Início."}
+        ### FASE 1: TRIAGEM (Início):
+        - Se o histórico for vazio ou apenas saudações, responda apenas: "Olá! Sou o Estrategista Harpia. Para eu te dar o caminho exato, qual o maior gargalo operacional da sua empresa hoje: Atendimento, Vendas ou Marketing?"
+        - Não cite módulos ou e-book nesta fase.
 
-        ### MEMÓRIA DA CONVERSA:
-        {memoria_texto if memoria_texto else "Início de conversa."}
+        ### FASE 2: CONSULTORIA (Após identificação):
+        - Indique o Módulo do E-book (ex: "Isso está no Módulo 2").
+        - Explique O QUE a automação faz e o BENEFÍCIO generalista.
+        - **PROIBIÇÃO:** Não entregue o passo a passo técnico. Use: "O tutorial técnico de configuração deste fluxo é exclusivo do nosso E-book".
+        - Se a dúvida for muito específica/fora do e-book, sugira a Mentoria (Upsell).
 
         ### CONTEXTO DO E-BOOK:
         {CONTEUDO_EBOOK}
@@ -111,12 +110,14 @@ async def chat(query: UserQuery):
         ### RESPOSTA DO ESTRATEGISTA:
         """
 
-        # Linha 133 corrigida aqui:
+        # Configurações de resposta rápida
         response = client.models.generate_content(
             model=MODELO_ALVO,
             contents=prompt_sistema,
             config=types.GenerateContentConfig(
                 temperature=TEMPERATURE,
+                top_p=0.8,
+                top_k=40,
                 max_output_tokens=2048
             )
         )
@@ -135,7 +136,3 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
-
-
-
-
